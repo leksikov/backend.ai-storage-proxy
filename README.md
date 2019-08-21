@@ -1,1 +1,1 @@
-# Backend.AI Agent Storage Plugin
+# Backend.AI Storage Agent
