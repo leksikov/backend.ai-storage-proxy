@@ -1,0 +1,7 @@
+[agent]
+mode = "scratch"
+rpc-listen-addr = { host = "127.0.0.1", port = 8130 }
+
+[storage]
+mode = "xfs"
+path = "/xfs"
