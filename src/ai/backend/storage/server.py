@@ -42,10 +42,10 @@ class AgentRPCServer(rpc.AttrHandler):
         self.agent: AbstractVolumeAgent = None
     
     async def init(self):
-        if self.config['agent']['mode'] == 'xfs':
+        if self.config['storage']['mode'] == 'xfs':
             from .xfs.agent import VolumeAgent
             self.agent = VolumeAgent(kwargs['mount_path'])
-        elif self.config['agent']['mode'] == 'btrfs':
+        elif self.config['storage']['mode'] == 'btrfs':
             # TODO: Implement Btrfs Agent
         await self.agent.init()
 
