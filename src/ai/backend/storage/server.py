@@ -114,6 +114,7 @@ class AgentRPCServer(rpc.AttrHandler):
 async def server_main(loop, pidx, _args):
     config = _args[0]
 
+    etcd_credentials = None
     if config['etcd']['user']:
         etcd_credentials = {
             'user': config['etcd']['user'],
@@ -131,7 +132,7 @@ async def server_main(loop, pidx, _args):
     agent = AgentRPCServer(etcd, config, loop=loop)
     await agent.init()
     try:
-        stop_signal = yield
+        yield
     finally:
         log.info('Shutting down...')
         await agent.shutdown()
