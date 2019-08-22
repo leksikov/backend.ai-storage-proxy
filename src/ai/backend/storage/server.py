@@ -146,6 +146,10 @@ async def server_main(loop, pidx, _args):
 @click.pass_context
 def main(cli_ctx, config_path, debug):
     volume_config_iv = t.Dict({
+        t.Key('etcd'): t.Dict({
+            t.Key('namespace'): t.String,
+            t.Key('addr'): tx.HostPortPair(allow_blank_host=False)
+        }).allow_extra('*'),
         t.Key('agent'): t.Dict({
             t.Key('mode'): t.Enum('scratch', 'vfolder'),
             t.Key('rpc-listen-addr'): tx.HostPortPair(allow_blank_host=True)
@@ -163,6 +167,10 @@ def main(cli_ctx, config_path, debug):
     config.override_with_env(raw_cfg, ('etcd', 'addr'), 'BACKEND_ETCD_ADDR')
     config.override_with_env(raw_cfg, ('etcd', 'user'), 'BACKEND_ETCD_USER')
     config.override_with_env(raw_cfg, ('etcd', 'password'), 'BACKEND_ETCD_PASSWORD')
+    config.override_with_env(raw_cfg, ('agent', 'rpc-listen-addr', 'host'),
+                             'BACKEND_AGENT_HOST_OVERRIDE')
+    config.override_with_env(raw_cfg, ('agent', 'rpc-listen-addr', 'port'),
+                             'BACKEND_AGENT_PORT')
 
     if debug:
         config.override_key(raw_cfg, ('debug', 'enabled'), True)
