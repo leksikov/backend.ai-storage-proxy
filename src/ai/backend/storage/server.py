@@ -10,6 +10,7 @@ import click
 import trafaret as t
 
 from ai.backend.common import config
+from ai.backend.common.etcd import AsyncEtcd, ConfigScopes
 from ai.backend.common.logging import BraceStyleAdapter
 from ai.backend.common import validators as tx
 
@@ -34,14 +35,20 @@ class AbstractVolumeAgent:
     async def remove(self, kernel_id: str):
         pass
 
+    async def get(self, kernel_id: str):
+        pass
+
 
 class AgentRPCServer(rpc.AttrHandler):
-    def __init__(self, config):
+    def __init__(self, etcd, config):
         self.config = config
+        self.etcd = etcd
 
         self.agent: AbstractVolumeAgent = None
     
     async def init(self):
+        await self.update_status('starting')
+
         if self.config['storage']['mode'] == 'xfs':
             from .xfs.agent import VolumeAgent
             self.agent = VolumeAgent(kwargs['mount_path'])
@@ -53,6 +60,18 @@ class AgentRPCServer(rpc.AttrHandler):
         agent_addr = f"tcp://{rpc_addr}"
         self.rpc_server = await rpc.serve_rpc(self, bind=agent_addr)
         self.rpc_server.transport.setsockopt(zmq.LINGER, 200)
+        log.info('started handling RPC requests at {}', rpc_addr)
+
+        await self.etcd.put('ip', rpc_addr.host, scope=ConfigScopes.NODE)
+        await self.update_status('running')
+
+    async def shutdown(self):
+        if self.rpc_server is not None:
+            self.rpc_server.close()
+            await self.rpc_server.wait_closed()
+
+    async def update_status(self, status):
+        await self.etcd.put('', status, scope=ConfigScopes.NODE)
 
     @aiotools.actxmgr
     async def handle_rpc_exception(self):
@@ -77,12 +96,35 @@ class AgentRPCServer(rpc.AttrHandler):
         async with self.handle_rpc_exception():
             return await self.agent.remove(kernel_id)
 
+    @rpc.method
+    async def get(self, kernel_id: str):
+        log.debug('rpc::get({0})', kernel_id)
+        async with self.handle_rpc_exception():
+            return await self.agent.get(kernel_id)
 
 @aiotools.server
 async def server_main(loop, config):
-    agent = AgentRPCServer(config, loop=loop)
-    await agent.init()
+    if config['etcd']['user']:
+        etcd_credentials = {
+            'user': config['etcd']['user'],
+            'password': config['etcd']['password'],
+        }
+    scope_prefix_map = {
+        ConfigScopes.GLOBAL: '',
+        ConfigScopes.NODE: 'nodes/storage',
+    }
+    etcd = AsyncEtcd(config['etcd']['addr'],
+                     config['etcd']['namespace'],
+                     scope_prefix_map,
+                     credentials=etcd_credentials)
 
+    agent = AgentRPCServer(etcd, config, loop=loop)
+    await agent.init()
+    try:
+        stop_signal = yield
+    finally:
+        log.info('Shutting down...')
+        await agent.shutdown()
 
 @click.group(invoke_without_command=True)
 @click.option('-f', '--config-path', '--config', type=Path, default=None,
@@ -104,6 +146,16 @@ def main():
 
     # Determine where to read configuration.
     raw_cfg, cfg_src_path = config.read_from_file(config_path, 'agent')
+
+    config.override_with_env(raw_cfg, ('etcd', 'namespace'), 'BACKEND_NAMESPACE')
+    config.override_with_env(raw_cfg, ('etcd', 'addr'), 'BACKEND_ETCD_ADDR')
+    config.override_with_env(raw_cfg, ('etcd', 'user'), 'BACKEND_ETCD_USER')
+    config.override_with_env(raw_cfg, ('etcd', 'password'), 'BACKEND_ETCD_PASSWORD')
+
+    if debug:
+        config.override_key(raw_cfg, ('debug', 'enabled'), True)
+        config.override_key(raw_cfg, ('logging', 'level'), 'DEBUG')
+        config.override_key(raw_cfg, ('logging', 'pkg-ns', 'ai.backend'), 'DEBUG')
 
     try:
         cfg = config.check(raw_cfg, volume_config_iv)

@@ -20,7 +20,7 @@ class VolumeAgent(AbstractVolumeAgent):
     async def init(self):
         pass
 
-    async def create(self, kernel_id: str, size: str):
+    async def create(self, kernel_id: str, size: str) -> str:
         project_id = -1
 
         if kernel_id in self.registry.keys():
@@ -47,6 +47,8 @@ class VolumeAgent(AbstractVolumeAgent):
         out, err = await run(f'xfs_quota -x -c "limit -p bhard={size} {kernel_id}" {self.mount_path}')
         self.registry[kernel_id] = project_id
         self.project_id_pool = (self.project_ids + [kernel_id]).sort()
+
+        return folder_path
 
     async def remove(self, kernel_id: str):
         if kernel_id not in self.registry.keys():
@@ -75,3 +77,6 @@ class VolumeAgent(AbstractVolumeAgent):
         
         self.project_id_pool.remove(self.registry[kernel_id])
         del self.registry[kernel_id]
+
+    async def get(self, kernel_id: str) -> str:
+        return (Path(self.mount_path) / kernel_id).resolve()
