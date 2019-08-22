@@ -129,7 +129,7 @@ async def server_main(loop, pidx, _args):
                      scope_prefix_map,
                      credentials=etcd_credentials)
 
-    agent = AgentRPCServer(etcd, config, loop=loop)
+    agent = AgentRPCServer(etcd, config)
     await agent.init()
     try:
         yield
