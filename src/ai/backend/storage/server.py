@@ -54,6 +54,7 @@ class AgentRPCServer(rpc.AttrHandler):
             self.agent = VolumeAgent(kwargs['mount_path'])
         elif self.config['storage']['mode'] == 'btrfs':
             # TODO: Implement Btrfs Agent
+            pass
         await self.agent.init()
 
         rpc_addr = self.config['agent']['rpc-listen-addr']
