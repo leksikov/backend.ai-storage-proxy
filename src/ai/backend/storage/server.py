@@ -111,7 +111,7 @@ class AgentRPCServer(rpc.AttrHandler):
 
 
 @aiotools.server
-async def server_main(loop, config):
+async def server_main(loop, pidx, config):
     if config['etcd']['user']:
         etcd_credentials = {
             'user': config['etcd']['user'],
