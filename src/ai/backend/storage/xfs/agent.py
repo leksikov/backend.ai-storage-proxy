@@ -4,7 +4,7 @@ import os
 
 from ai.backend.common.logging import BraceStyleAdapter
 
-from .server import AbstractVolumeAgent, run
+from ..server import AbstractVolumeAgent, run
 
 log = BraceStyleAdapter(logging.getLogger('ai.backend.storage.xfs.agent'))
 
