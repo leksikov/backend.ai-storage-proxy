@@ -3,7 +3,7 @@ from ipaddress import _BaseAddress as BaseIPAddress
 import logging
 import os
 from pathlib import Path
-from pprint import pformat
+from pprint import pformat, pprint
 from setproctitle import setproctitle
 import sys
 from typing import List
@@ -173,6 +173,10 @@ def main(cli_ctx, config_path, debug):
         print('ConfigurationError: Validation of agent configuration has failed:', file=sys.stderr)
         print(pformat(e.invalid_data), file=sys.stderr)
         raise click.Abort()
+
+    if 'debug' in cfg and cfg['debug']['enabled']:
+        print('== Agent configuration ==')
+        pprint(cfg)
 
     rpc_host = cfg['agent']['rpc-listen-addr'].host
     if (isinstance(rpc_host, BaseIPAddress) and
