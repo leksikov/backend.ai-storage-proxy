@@ -174,10 +174,6 @@ def main(cli_ctx, config_path, debug):
         print(pformat(e.invalid_data), file=sys.stderr)
         raise click.Abort()
 
-    if 'debug' in cfg and cfg['debug']['enabled']:
-        print('== Agent configuration ==')
-        pprint(cfg)
-
     rpc_host = cfg['agent']['rpc-listen-addr'].host
     if (isinstance(rpc_host, BaseIPAddress) and
         (rpc_host.is_unspecified or rpc_host.is_link_local)):
@@ -197,6 +193,10 @@ def main(cli_ctx, config_path, debug):
         log_config = logging.getLogger('ai.backend.agent.config')
         if debug:
             log_config.debug('debug mode enabled.')
+
+        if 'debug' in cfg and cfg['debug']['enabled']:
+            print('== Agent configuration ==')
+            pprint(cfg)
 
         aiotools.start_server(server_main, num_workers=1,
                                 use_threading=True, args=(cfg, ))
