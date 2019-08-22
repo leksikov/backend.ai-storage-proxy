@@ -1,13 +1,19 @@
+from asyncio import subprocess, create_subprocess_shell
+from ipaddress import _BaseAddress as BaseIPAddress
 import logging
 import os
-from pprint import pformat, pprint
+from pathlib import Path
+from pprint import pformat
 from setproctitle import setproctitle
 import sys
+from typing import List
 
 import aiotools
 from aiozmq import rpc
 import click
 import trafaret as t
+import uvloop
+import zmq
 
 from ai.backend.common import config
 from ai.backend.common.etcd import AsyncEtcd, ConfigScopes
@@ -18,6 +24,7 @@ from . import __version__ as VERSION
 
 log = BraceStyleAdapter(logging.getLogger('ai.backend.storage.server'))
 
+
 async def run(cmd: str) -> List[str]:
     proc = await create_subprocess_shell(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     out, err = await proc.communicate()
@@ -26,9 +33,9 @@ async def run(cmd: str) -> List[str]:
 
 
 class AbstractVolumeAgent:
-    async def init(self): 
+    async def init(self):
         pass
-    
+
     async def create(self, kernel_id: str, size: int):
         pass
 
@@ -45,13 +52,13 @@ class AgentRPCServer(rpc.AttrHandler):
         self.etcd = etcd
 
         self.agent: AbstractVolumeAgent = None
-    
+
     async def init(self):
         await self.update_status('starting')
 
         if self.config['storage']['mode'] == 'xfs':
             from .xfs.agent import VolumeAgent
-            self.agent = VolumeAgent(kwargs['mount_path'])
+            self.agent = VolumeAgent(self.config['storage']['path'])
         elif self.config['storage']['mode'] == 'btrfs':
             # TODO: Implement Btrfs Agent
             pass
@@ -84,13 +91,13 @@ class AgentRPCServer(rpc.AttrHandler):
         except Exception:
             log.exception('unexpected error')
             raise
-    
+
     @rpc.method
     async def create(self, kernel_id: str, size: int):
         log.debug('rpc::create({0}, {1})', kernel_id, size)
         async with self.handle_rpc_exception():
-            return await self.agent.create(kernel_id, size)    
-    
+            return await self.agent.create(kernel_id, size)
+
     @rpc.method
     async def remove(self, kernel_id: str):
         log.debug('rpc::remove({0})', kernel_id)
@@ -102,6 +109,7 @@ class AgentRPCServer(rpc.AttrHandler):
         log.debug('rpc::get({0})', kernel_id)
         async with self.handle_rpc_exception():
             return await self.agent.get(kernel_id)
+
 
 @aiotools.server
 async def server_main(loop, config):
@@ -127,12 +135,13 @@ async def server_main(loop, config):
         log.info('Shutting down...')
         await agent.shutdown()
 
+
 @click.group(invoke_without_command=True)
 @click.option('-f', '--config-path', '--config', type=Path, default=None,
               help='The config file path. (default: ./volume.toml and /etc/backend.ai/volume.toml)')
 @click.option('--debug', is_flag=True,
               help='Enable the debug mode and override the global log level to DEBUG.')
-def main():
+def main(cli_ctx, config_path, debug):
     volume_config_iv = t.Dict({
         t.Key('agent'): t.Dict({
             t.Key('mode'): t.Enum('scratch', 'vfolder'),
@@ -179,14 +188,13 @@ def main():
         raise click.Abort()
 
     if cli_ctx.invoked_subcommand is None:
-        logger = Logger(cfg['logging'])
         setproctitle('Backend.AI: Storage Agent')
         log.info('Backend.AI Storage Agent', VERSION)
 
         log_config = logging.getLogger('ai.backend.agent.config')
         if debug:
             log_config.debug('debug mode enabled.')
-        
+
         if cfg['agent']['event-loop'] == 'uvloop':
             uvloop.install()
             log.info('Using uvloop as the event loop backend')
@@ -194,6 +202,7 @@ def main():
                                 use_threading=True, args=(cfg, ))
         log.info('exit.')
     return 0
+
 
 if __name__ == "__main__":
     sys.exit(main())

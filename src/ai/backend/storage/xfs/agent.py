@@ -1,8 +1,6 @@
-from asyncio import create_subprocess_shell, subprocess
 import logging
 from pathlib import Path
 import os
-from typing import List
 
 from ai.backend.common.logging import BraceStyleAdapter
 
@@ -25,15 +23,15 @@ class VolumeAgent(AbstractVolumeAgent):
 
         if kernel_id in self.registry.keys():
             return
-        
+
         for i in range(len(self.project_id_pool)):
-            if self.project_id_pool[i] + 1 != self.project_id_pool[i+1]:
+            if self.project_id_pool[i] + 1 != self.project_id_pool[i + 1]:
                 project_id = self.project_id_pool[i] + 1
                 break
-        
+
         if project_id == -1:
             project_id = self.project_id_pool[-1] + 1
-        
+
         folder_path = (Path(self.mount_path) / kernel_id).resolve()
 
         os.mkdir(folder_path)
@@ -42,7 +40,7 @@ class VolumeAgent(AbstractVolumeAgent):
             fw.write(f'{project_id}:{folder_path}')
         with open('/etc/projid', 'w+') as fw:
             fw.write(f'{kernel_id}:{project_id}')
-        
+
         out, err = await run(f'xfs_quota -x -c "project -s {kernel_id}" {self.mount_path}')
         out, err = await run(f'xfs_quota -x -c "limit -p bhard={size} {kernel_id}" {self.mount_path}')
         self.registry[kernel_id] = project_id
@@ -53,9 +51,9 @@ class VolumeAgent(AbstractVolumeAgent):
     async def remove(self, kernel_id: str):
         if kernel_id not in self.registry.keys():
             return
-        
+
         out, err = await run(f'xfs_quota -x -c "limit -p bsoft=0 bhard=0 {kernel_id}" {self.mount_path}')
-        
+
         new_projects = ''
         new_projid = ''
 
@@ -74,7 +72,7 @@ class VolumeAgent(AbstractVolumeAgent):
             fw.write(new_projects)
         with open('/etc/projid', 'w') as fw:
             fw.write(new_projid)
-        
+
         self.project_id_pool.remove(self.registry[kernel_id])
         del self.registry[kernel_id]
 
