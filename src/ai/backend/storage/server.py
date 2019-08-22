@@ -140,6 +140,7 @@ async def server_main(loop, config):
               help='The config file path. (default: ./volume.toml and /etc/backend.ai/volume.toml)')
 @click.option('--debug', is_flag=True,
               help='Enable the debug mode and override the global log level to DEBUG.')
+@click.pass_context
 def main(cli_ctx, config_path, debug):
     volume_config_iv = t.Dict({
         t.Key('agent'): t.Dict({
