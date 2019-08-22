@@ -92,7 +92,12 @@ class AgentRPCServer(rpc.AttrHandler):
             raise
 
     @rpc.method
-    async def create(self, kernel_id: str, size: int):
+    async def hello(self, agent_id: str) -> str:
+        log.debug('rpc::hello({0})', agent_id)
+        return 'OLLEH'
+
+    @rpc.method
+    async def create(self, kernel_id: str, size: int) -> str:
         log.debug('rpc::create({0}, {1})', kernel_id, size)
         async with self.handle_rpc_exception():
             return await self.agent.create(kernel_id, size)
@@ -104,7 +109,7 @@ class AgentRPCServer(rpc.AttrHandler):
             return await self.agent.remove(kernel_id)
 
     @rpc.method
-    async def get(self, kernel_id: str):
+    async def get(self, kernel_id: str) -> str:
         log.debug('rpc::get({0})', kernel_id)
         async with self.handle_rpc_exception():
             return await self.agent.get(kernel_id)
