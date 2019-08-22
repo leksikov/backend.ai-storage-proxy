@@ -12,7 +12,6 @@ import aiotools
 from aiozmq import rpc
 import click
 import trafaret as t
-import uvloop
 import zmq
 
 from ai.backend.common import config
@@ -145,8 +144,7 @@ def main(cli_ctx, config_path, debug):
     volume_config_iv = t.Dict({
         t.Key('agent'): t.Dict({
             t.Key('mode'): t.Enum('scratch', 'vfolder'),
-            t.Key('rpc-listen-addr'): tx.HostPortPair(allow_blank_host=True),
-            t.Key('event-loop', default='asyncio'): t.Enum('asyncio', 'uvloop')
+            t.Key('rpc-listen-addr'): tx.HostPortPair(allow_blank_host=True)
         }),
         t.Key('storage'): t.Dict({
             t.Key('mode'): t.Enum('xfs', 'btrfs'),
@@ -195,9 +193,6 @@ def main(cli_ctx, config_path, debug):
         if debug:
             log_config.debug('debug mode enabled.')
 
-        if cfg['agent']['event-loop'] == 'uvloop':
-            uvloop.install()
-            log.info('Using uvloop as the event loop backend')
         aiotools.start_server(server_main, num_workers=1,
                                 use_threading=True, args=(cfg, ))
         log.info('exit.')
