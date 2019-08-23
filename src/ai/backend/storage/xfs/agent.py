@@ -16,7 +16,10 @@ class VolumeAgent(AbstractVolumeAgent):
         self.mount_path = mount_path
 
     async def init(self):
-        pass
+        with open('/etc/projid', 'r') as fr:
+            for line in fr.readlines():
+                proj_name, proj_id = line.split(':')[:2]
+                self.project_id_pool.append(int(proj_id))
 
     async def create(self, kernel_id: str, size: str) -> str:
         project_id = -1
@@ -24,11 +27,12 @@ class VolumeAgent(AbstractVolumeAgent):
         if kernel_id in self.registry.keys():
             return
 
-        for i in range(len(self.project_id_pool)):
+        for i in range(len(self.project_id_pool)-1):
             if self.project_id_pool[i] + 1 != self.project_id_pool[i + 1]:
                 project_id = self.project_id_pool[i] + 1
                 break
-
+        if len(self.project_id_pool) == 0:
+            project_id = 1
         if project_id == -1:
             project_id = self.project_id_pool[-1] + 1
 
@@ -44,7 +48,7 @@ class VolumeAgent(AbstractVolumeAgent):
         out, err = await run(f'xfs_quota -x -c "project -s {kernel_id}" {self.mount_path}')
         out, err = await run(f'xfs_quota -x -c "limit -p bhard={size} {kernel_id}" {self.mount_path}')
         self.registry[kernel_id] = project_id
-        self.project_id_pool = (self.project_ids + [kernel_id]).sort()
+        self.project_id_pool = (self.project_id_pool + [project_id]).sort()
 
         return folder_path
 

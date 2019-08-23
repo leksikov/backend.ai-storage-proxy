@@ -35,7 +35,7 @@ class AbstractVolumeAgent:
     async def init(self):
         pass
 
-    async def create(self, kernel_id: str, size: int):
+    async def create(self, kernel_id: str, size: str):
         pass
 
     async def remove(self, kernel_id: str):
@@ -97,7 +97,7 @@ class AgentRPCServer(rpc.AttrHandler):
         return 'OLLEH'
 
     @rpc.method
-    async def create(self, kernel_id: str, size: int) -> str:
+    async def create(self, kernel_id: str, size: str) -> str:
         log.debug('rpc::create({0}, {1})', kernel_id, size)
         async with self.handle_rpc_exception():
             return await self.agent.create(kernel_id, size)
