@@ -1,21 +1,24 @@
 import logging
 from pathlib import Path
+import shutil
 import os
 
 from ai.backend.common.logging import BraceStyleAdapter
 
 from ..server import AbstractVolumeAgent, run
 
-log = BraceStyleAdapter(logging.getLogger('ai.backend.storage.xfs.agent'))
-
+log = BraceStyleAdapter(logging.getLogger('ai.backend.storage.server'))
 
 class VolumeAgent(AbstractVolumeAgent):
-    def __init__(self, mount_path):
+    def __init__(self, mount_path, uid, gid):
         self.registry = {}
         self.project_id_pool = []
         self.mount_path = mount_path
+        self.uid = uid
+        self.gid = gid
 
     async def init(self):
+        log.setLevel(logging.DEBUG)
         with open('/etc/projid', 'r') as fr:
             for line in fr.readlines():
                 proj_name, proj_id = line.split(':')[:2]
@@ -39,6 +42,7 @@ class VolumeAgent(AbstractVolumeAgent):
         folder_path = (Path(self.mount_path) / kernel_id).resolve()
 
         os.mkdir(folder_path)
+        os.chown(folder_path, self.uid, self.gid)
 
         with open('/etc/projects', 'w+') as fw:
             fw.write(f'{project_id}:{folder_path}')
@@ -48,7 +52,8 @@ class VolumeAgent(AbstractVolumeAgent):
         out, err = await run(f'xfs_quota -x -c "project -s {kernel_id}" {self.mount_path}')
         out, err = await run(f'xfs_quota -x -c "limit -p bhard={size} {kernel_id}" {self.mount_path}')
         self.registry[kernel_id] = project_id
-        self.project_id_pool = (self.project_id_pool + [project_id]).sort()
+        self.project_id_pool += [project_id]
+        self.project_id_pool.sort()
 
         return folder_path
 
@@ -77,6 +82,7 @@ class VolumeAgent(AbstractVolumeAgent):
         with open('/etc/projid', 'w') as fw:
             fw.write(new_projid)
 
+        shutil.rmtree(Path(self.mount_path) / kernel_id)
         self.project_id_pool.remove(self.registry[kernel_id])
         del self.registry[kernel_id]
 
