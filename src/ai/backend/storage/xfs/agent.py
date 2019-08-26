@@ -9,6 +9,7 @@ from ..server import AbstractVolumeAgent, run
 
 log = BraceStyleAdapter(logging.getLogger('ai.backend.storage.server'))
 
+
 class VolumeAgent(AbstractVolumeAgent):
     def __init__(self, mount_path, uid, gid):
         self.registry = {}
@@ -30,7 +31,7 @@ class VolumeAgent(AbstractVolumeAgent):
         if kernel_id in self.registry.keys():
             return
 
-        for i in range(len(self.project_id_pool)-1):
+        for i in range(len(self.project_id_pool) - 1):
             if self.project_id_pool[i] + 1 != self.project_id_pool[i + 1]:
                 project_id = self.project_id_pool[i] + 1
                 break

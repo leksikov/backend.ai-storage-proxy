@@ -57,7 +57,11 @@ class AgentRPCServer(rpc.AttrHandler):
 
         if self.config['storage']['mode'] == 'xfs':
             from .xfs.agent import VolumeAgent
-            self.agent = VolumeAgent(self.config['storage']['path'], self.config['agent']['user-uid'], self.config['agent']['user-gid'])
+            self.agent = VolumeAgent(
+                self.config['storage']['path'],
+                self.config['agent']['user-uid'],
+                self.config['agent']['user-gid']
+            )
         elif self.config['storage']['mode'] == 'btrfs':
             # TODO: Implement Btrfs Agent
             pass
@@ -205,7 +209,7 @@ def main(cli_ctx, config_path, debug):
         raise click.Abort()
 
     log.setLevel(logging.INFO)
-    
+
     if cli_ctx.invoked_subcommand is None:
         setproctitle('Backend.AI: Storage Agent')
         log.info('Backend.AI Storage Agent', VERSION)
