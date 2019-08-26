@@ -23,7 +23,12 @@ First, prepare the source clone of this agent:
 
 From now on, let's assume all shell commands are executed inside the virtualenv.
 
-Then, copy the sample.toml and edit the TOML to match your system:
+Now install dependencies:
+```console
+# pip install -U -r requirements.txt
+```
+
+Then, copy the sample.toml and edit to match your machine:
 ```console
 # cp config/sample.toml agent.toml
 ```
