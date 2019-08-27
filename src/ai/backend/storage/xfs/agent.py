@@ -20,10 +20,16 @@ class VolumeAgent(AbstractVolumeAgent):
 
     async def init(self):
         log.setLevel(logging.DEBUG)
-        with open('/etc/projid', 'r') as fr:
-            for line in fr.readlines():
-                proj_name, proj_id = line.split(':')[:2]
-                self.project_id_pool.append(int(proj_id))
+        if os.path.isfile('/etc/projid'):
+            with open('/etc/projid', 'r') as fr:
+                for line in fr.readlines():
+                    proj_name, proj_id = line.split(':')[:2]
+                    self.project_id_pool.append(int(proj_id))
+        else:
+            await run('touch /etc/projid')
+
+        if not os.path.isfile('/etc/projects'):
+            await run('touch /etc/projects')
 
     async def create(self, kernel_id: str, size: str) -> str:
         project_id = -1
