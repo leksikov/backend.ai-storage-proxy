@@ -19,7 +19,6 @@ class VolumeAgent(AbstractVolumeAgent):
         self.gid = gid
 
     async def init(self):
-        log.setLevel(logging.DEBUG)
         if os.path.isfile('/etc/projid'):
             with open('/etc/projid', 'r') as fr:
                 for line in fr.readlines():
@@ -56,8 +55,8 @@ class VolumeAgent(AbstractVolumeAgent):
         with open('/etc/projid', 'w+') as fw:
             fw.write(f'{kernel_id}:{project_id}')
 
-        out, err = await run(f'xfs_quota -x -c "project -s {kernel_id}" {self.mount_path}')
-        out, err = await run(f'xfs_quota -x -c "limit -p bhard={size} {kernel_id}" {self.mount_path}')
+        await run(f'xfs_quota -x -c "project -s {kernel_id}" {self.mount_path}')
+        await run(f'xfs_quota -x -c "limit -p bhard={size} {kernel_id}" {self.mount_path}')
         self.registry[kernel_id] = project_id
         self.project_id_pool += [project_id]
         self.project_id_pool.sort()
@@ -68,7 +67,7 @@ class VolumeAgent(AbstractVolumeAgent):
         if kernel_id not in self.registry.keys():
             return
 
-        out, err = await run(f'xfs_quota -x -c "limit -p bsoft=0 bhard=0 {kernel_id}" {self.mount_path}')
+        await run(f'xfs_quota -x -c "limit -p bsoft=0 bhard=0 {kernel_id}" {self.mount_path}')
 
         new_projects = ''
         new_projid = ''

@@ -20,15 +20,20 @@ from ai.backend.common.logging import Logger, BraceStyleAdapter
 from ai.backend.common import validators as tx
 
 from . import __version__ as VERSION
+from .exception import ExecutionError
 
 log = BraceStyleAdapter(logging.getLogger('ai.backend.storage.server'))
 
 
 async def run(cmd: str) -> List[str]:
+    log.debug('Executing [{}]', cmd)
     proc = await create_subprocess_shell(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     out, err = await proc.communicate()
 
-    return out.decode(), err.decode() if err else ''
+    if err:
+        raise ExecutionError(err.decode())
+    
+    return out.decode()
 
 
 class AbstractVolumeAgent:
