@@ -28,9 +28,9 @@ Now install dependencies:
 # pip install -U -r requirements.txt
 ```
 
-Then, copy the sample.toml and edit to match your machine:
+Then, copy halfstack.toml to root of the project folder and edit to match your machine:
 ```console
-# cp config/sample.toml agent.toml
+# cp config/halfstack.toml agent.toml
 ```
 
 When done, start storage server with root privilege:

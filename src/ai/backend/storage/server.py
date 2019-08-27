@@ -16,7 +16,7 @@ import zmq
 
 from ai.backend.common import config
 from ai.backend.common.etcd import AsyncEtcd, ConfigScopes
-from ai.backend.common.logging import BraceStyleAdapter
+from ai.backend.common.logging import Logger, BraceStyleAdapter
 from ai.backend.common import validators as tx
 
 from . import __version__ as VERSION
@@ -159,6 +159,7 @@ def main(cli_ctx, config_path, debug):
             t.Key('namespace'): t.String,
             t.Key('addr'): tx.HostPortPair(allow_blank_host=False)
         }).allow_extra('*'),
+        t.Key('logging'): t.Any,  # checked in ai.backend.common.logging
         t.Key('agent'): t.Dict({
             t.Key('mode'): t.Enum('scratch', 'vfolder'),
             t.Key('rpc-listen-addr'): tx.HostPortPair(allow_blank_host=True),
@@ -208,24 +209,23 @@ def main(cli_ctx, config_path, debug):
         print('Storage agent can only be run as root', file=sys.stderr)
         raise click.Abort()
 
-    log.setLevel(logging.INFO)
-
     if cli_ctx.invoked_subcommand is None:
         setproctitle('Backend.AI: Storage Agent')
-        log.info('Backend.AI Storage Agent', VERSION)
+        logger = Logger(cfg['logging'])
+        with logger:
+            log.info('Backend.AI Storage Agent', VERSION)
 
-        log_config = logging.getLogger('ai.backend.agent.config')
-        if debug:
-            log.setLevel(logging.DEBUG)
-            log_config.debug('debug mode enabled.')
+            log_config = logging.getLogger('ai.backend.agent.config')
+            if debug:
+                log_config.debug('debug mode enabled.')
 
-        if 'debug' in cfg and cfg['debug']['enabled']:
-            print('== Agent configuration ==')
-            pprint(cfg)
+            if 'debug' in cfg and cfg['debug']['enabled']:
+                print('== Agent configuration ==')
+                pprint(cfg)
 
-        aiotools.start_server(server_main, num_workers=1,
-                                use_threading=True, args=(cfg, ))
-        log.info('exit.')
+            aiotools.start_server(server_main, num_workers=1,
+                                    use_threading=True, args=(cfg, ))
+            log.info('exit.')
     return 0
 
 

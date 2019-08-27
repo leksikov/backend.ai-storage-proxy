@@ -1,0 +1,25 @@
+[etcd]
+namespace = "local"                         
+addr = { host = "127.0.0.1", port = 2379 }  
+user = ""                                  
+password = ""				    
+
+
+[agent]
+mode = "scratch"
+rpc-listen-addr = { host = "127.0.0.1", port = 6020 }
+user-uid = 1000
+user-gid = 1000
+
+[logging]
+level = "INFO"
+drivers = ["console"]
+
+
+[logging.console]
+colored = true
+format = "simple"
+
+[storage]
+mode = "xfs"
+path = "/xfs"

@@ -14,10 +14,29 @@ mode = "scratch"
 # If host is an empty string, the agent tries to auto-detect it with a fallback to "127.0.0.1".
 # For mobile environments such as developer laptops which roam around different networks,
 # it is HIGHLY RECOMMENDED to set this to "127.0.0.1" manually.
-rpc-listen-addr = { host = "127.0.0.1", port = 8130 }
+rpc-listen-addr = { host = "127.0.0.1", port = 6020 }
 # UID and GID of user which will run Backend.AI agent.
 user-uid = 1000
 user-gid = 1000
+
+[logging]
+# One of: "NOTSET", "DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"
+# Set the global logging level.
+level = "INFO"
+
+# Multi-choice of: "console", "logstash", "file"
+# For each choice, there must be a "logging.<driver>" section
+# in this config file as exemplified below.
+drivers = ["console"]
+
+
+[logging.console]
+# If set true, use ANSI colors if the console is a terminal.
+# If set false, always disable the colored output in console logs.
+colored = true
+
+# One of: "simple", "verbose"
+format = "simple"
 
 [storage]
 # Storage mode; currently we support XFS only.
