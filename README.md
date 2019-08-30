@@ -41,3 +41,24 @@ When done, start storage server with root privilege:
 This command will start Storage Agent daemon binded to `127.0.0.1:6020`.
 
 Now start Backent.AI Agent with `scratch-type` to `volume-agent`.
+
+#### For testing: Create virtual XFS device
+It'll be better to create a virtual block device mounted to `lo` if you're only using this storage agent for testing. To achieve that:
+1. Create file with your desired size
+```console
+# dd if=/dev/zero of=xfs_test.img bs=1G count=100
+```
+2. Make file as XFS partition
+```console
+# mkfs.xfs xfs_test.img
+```
+3. Mount it to loopback
+```console
+# export LODEVICE=$(losetup -f)
+# losetup $LODEVICE xfs_test.img
+```
+4. Create mount point and mount loopback device, with pquota option
+```console
+# mkdir -p /xfs
+# mount -o loop -o pquota $LODEVICE /xfs
+```
