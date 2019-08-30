@@ -51,9 +51,9 @@ class VolumeAgent(AbstractVolumeAgent):
         os.chown(folder_path, self.uid, self.gid)
 
         with open('/etc/projects', 'a') as fw:
-            fw.write(f'{project_id}:{folder_path}')
+            fw.write(f'{project_id}:{folder_path}\n')
         with open('/etc/projid', 'a') as fw:
-            fw.write(f'{kernel_id}:{project_id}')
+            fw.write(f'{kernel_id}:{project_id}\n')
 
         await run(f'xfs_quota -x -c "project -s {kernel_id}" {self.mount_path}')
         await run(f'xfs_quota -x -c "limit -p bhard={size} {kernel_id}" {self.mount_path}')
