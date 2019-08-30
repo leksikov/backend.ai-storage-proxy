@@ -50,9 +50,9 @@ class VolumeAgent(AbstractVolumeAgent):
         os.mkdir(folder_path)
         os.chown(folder_path, self.uid, self.gid)
 
-        with open('/etc/projects', 'w+') as fw:
+        with open('/etc/projects', 'a') as fw:
             fw.write(f'{project_id}:{folder_path}')
-        with open('/etc/projid', 'w+') as fw:
+        with open('/etc/projid', 'a') as fw:
             fw.write(f'{kernel_id}:{project_id}')
 
         await run(f'xfs_quota -x -c "project -s {kernel_id}" {self.mount_path}')
