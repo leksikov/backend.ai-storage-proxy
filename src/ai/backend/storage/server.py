@@ -1,4 +1,6 @@
+import asyncio
 from asyncio import subprocess, create_subprocess_shell
+import functools
 from ipaddress import _BaseAddress as BaseIPAddress
 import logging
 import os
@@ -6,15 +8,16 @@ from pathlib import Path
 from pprint import pformat, pprint
 from setproctitle import setproctitle
 import sys
-from typing import List
+from typing import Any, ClassVar, Callable, List, Set
 
 import aiotools
 from aiozmq import rpc
+from callosum.rpc import Peer, RPCMessage
 import click
 import trafaret as t
 import zmq
 
-from ai.backend.common import config
+from ai.backend.common import config, msgpack
 from ai.backend.common.etcd import AsyncEtcd, ConfigScopes
 from ai.backend.common.logging import Logger, BraceStyleAdapter
 from ai.backend.common import validators as tx
@@ -25,15 +28,44 @@ from .exception import ExecutionError
 log = BraceStyleAdapter(logging.getLogger('ai.backend.storage.server'))
 
 
-async def run(cmd: str) -> List[str]:
+async def run(cmd: str) -> str:
     log.debug('Executing [{}]', cmd)
     proc = await create_subprocess_shell(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     out, err = await proc.communicate()
-
     if err:
         raise ExecutionError(err.decode())
-    
     return out.decode()
+
+
+class RPCFunctionRegistry:
+
+    functions: Set[str]
+
+    def __init__(self) -> None:
+        self.functions = set()
+
+    def __call__(self, meth: Callable) -> Callable[[RPCMessage], Any]:
+
+        @functools.wraps(meth)
+        async def _inner(self: AgentRPCServer, request: RPCMessage):
+            try:
+                if request.body is None:
+                    return await meth(self)
+                else:
+                    return await meth(
+                        self,
+                        *request.body['args'],
+                        **request.body['kwargs'],
+                    )
+            except (asyncio.CancelledError, asyncio.TimeoutError):
+                raise
+            except Exception:
+                log.exception('unexpected error')
+                self.error_monitor.capture_exception()
+                raise
+
+        self.functions.add(meth.__name__)
+        return _inner
 
 
 class AbstractVolumeAgent:
@@ -51,6 +83,12 @@ class AbstractVolumeAgent:
 
 
 class AgentRPCServer(rpc.AttrHandler):
+    rpc_function: ClassVar[RPCFunctionRegistry] = RPCFunctionRegistry()
+
+    rpc_server: Peer
+    rpc_addr: str
+    agent: AbstractVolumeAgent
+
     def __init__(self, etcd, config):
         self.config = config
         self.etcd = etcd
@@ -73,9 +111,16 @@ class AgentRPCServer(rpc.AttrHandler):
         await self.agent.init()
 
         rpc_addr = self.config['agent']['rpc-listen-addr']
-        agent_addr = f"tcp://{rpc_addr}"
-        self.rpc_server = await rpc.serve_rpc(self, bind=agent_addr)
-        self.rpc_server.transport.setsockopt(zmq.LINGER, 200)
+        self.rpc_server = Peer(
+            bind=ZeroMQAddress(f"tcp://{rpc_addr}"),
+            transport=ZeroMQRPCTransport,
+            scheduler=KeySerializedAsyncScheduler(),
+            serializer=msgpack.packb,
+            deserializer=msgpack.unpackb,
+            debug_rpc=self.config['debug']['enabled'],
+        )
+        for func_name in self.rpc_function.functions:
+            self.rpc_server.handle_function(func_name, getattr(self, func_name))
         log.info('started handling RPC requests at {}', rpc_addr)
 
         await self.etcd.put('ip', rpc_addr.host, scope=ConfigScopes.NODE)
@@ -100,24 +145,24 @@ class AgentRPCServer(rpc.AttrHandler):
             log.exception('unexpected error')
             raise
 
-    @rpc.method
+    @rpc_function
     async def hello(self, agent_id: str) -> str:
         log.debug('rpc::hello({0})', agent_id)
         return 'OLLEH'
 
-    @rpc.method
+    @rpc_function
     async def create(self, kernel_id: str, size: str) -> str:
         log.debug('rpc::create({0}, {1})', kernel_id, size)
         async with self.handle_rpc_exception():
             return await self.agent.create(kernel_id, size)
 
-    @rpc.method
+    @rpc_function
     async def remove(self, kernel_id: str):
         log.debug('rpc::remove({0})', kernel_id)
         async with self.handle_rpc_exception():
             return await self.agent.remove(kernel_id)
 
-    @rpc.method
+    @rpc_function
     async def get(self, kernel_id: str) -> str:
         log.debug('rpc::get({0})', kernel_id)
         async with self.handle_rpc_exception():
