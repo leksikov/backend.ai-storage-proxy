@@ -11,15 +11,14 @@ import sys
 from typing import Any, ClassVar, Callable, List, Set
 
 import aiotools
-from aiozmq import rpc
 from callosum.rpc import Peer, RPCMessage
 import click
 import trafaret as t
-import zmq
 
 from ai.backend.common import config, msgpack
 from ai.backend.common.etcd import AsyncEtcd, ConfigScopes
 from ai.backend.common.logging import Logger, BraceStyleAdapter
+from ai.backend.common.types import aobject
 from ai.backend.common import validators as tx
 
 from . import __version__ as VERSION
@@ -59,9 +58,9 @@ class RPCFunctionRegistry:
                     )
             except (asyncio.CancelledError, asyncio.TimeoutError):
                 raise
-            except Exception:
+            except Exception as e:
                 log.exception('unexpected error')
-                self.error_monitor.capture_exception()
+                log.exception(e)
                 raise
 
         self.functions.add(meth.__name__)
@@ -82,7 +81,7 @@ class AbstractVolumeAgent:
         pass
 
 
-class AgentRPCServer(rpc.AttrHandler):
+class AgentRPCServer(aobject):
     rpc_function: ClassVar[RPCFunctionRegistry] = RPCFunctionRegistry()
 
     rpc_server: Peer
