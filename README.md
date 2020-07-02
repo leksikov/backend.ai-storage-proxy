@@ -1,11 +1,18 @@
-# Backend.AI Storage Agent
-Backend.AI Storage Agent is a RPC daemon to manage directories used in Backend.AI agent, with quotation limit support.   
+# Backend.AI Storage Proxy
+Backend.AI Storage Agent is a RPC daemon to manage vfolders used in Backend.AI agent, with quota and storage-specific optimization support.
 
 ## Package Structure
 * `ai.backend.storage`
-    - `server`: The agent daemon which communicates between Backend.AI agent
-    - `xfs`: 
-        - `agent`: Implementation of `AbstractVolumeAgent` with XFS support
+  - `server`: The agent daemon which communicates between Backend.AI Manager
+  - `vfs`
+    - The minimal fallback backend which only uses the standard Linux filesystem interfaces
+  - `xfs`
+    - XFS-optimized backend with a small daemon to manage XFS project IDs for quota limits
+    - `agent`: Implementation of `AbstractVolumeAgent` with XFS support
+  - `purestorage`
+    - PureStorage-optimized backend with RapidFile Toolkit (formerly PureTools)
+  - `cephfs`
+    - CephFS-optimized backend with quota limit support
 
 ## Installation
 ### Prequisites
