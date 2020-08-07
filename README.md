@@ -1,4 +1,4 @@
-# Backend.AI aiotusclient
+# Backend.AI storage proxy
 aiotusclient custom implementation of py-tus-client for backend.ai
 
 ## Package Structure
